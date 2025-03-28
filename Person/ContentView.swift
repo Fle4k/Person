@@ -8,17 +8,79 @@
 import SwiftUI
 
 struct ContentView: View {
+    @State private var selectedTab = 0
+    @State private var isDrawerPresented = false
+    @State private var hasGeneratedNames = false
+    @StateObject private var viewModel = PersonViewModel()
+    
+    init() {
+        // Customize tab bar appearance
+        let appearance = UITabBarAppearance()
+        appearance.stackedLayoutAppearance.selected.iconColor = UIColor(Color.dynamicText)
+        appearance.stackedLayoutAppearance.selected.titleTextAttributes = [.foregroundColor: UIColor(Color.dynamicText)]
+        UITabBar.appearance().standardAppearance = appearance
+        UITabBar.appearance().scrollEdgeAppearance = appearance
+    }
+    
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
+        TabView(selection: $selectedTab) {
+            NavigationStack {
+                NameGeneratorView(
+                    isDrawerPresented: $isDrawerPresented,
+                    hasGeneratedNames: $hasGeneratedNames,
+                    viewModel: viewModel
+                )
+            }
+            .tint(Color.dynamicText)
+            .tabItem {
+                Label("Neuer Name", systemImage: "person")
+            }
+            .tag(0)
+            .gesture(
+                DragGesture()
+                    .onEnded { gesture in
+                        if gesture.translation.width < -50 {
+                            withAnimation {
+                                selectedTab = min(selectedTab + 1, 1)
+                            }
+                        } else if gesture.translation.width > 50 {
+                            withAnimation {
+                                selectedTab = max(selectedTab - 1, 0)
+                            }
+                        }
+                    }
+            )
+            
+            NavigationStack {
+                FavoritesView()
+                    .environmentObject(viewModel)
+            }
+            .tint(Color.dynamicText)
+            .tabItem {
+                Label("Favoriten", systemImage: "star.fill")
+            }
+            .tag(1)
+            .gesture(
+                DragGesture()
+                    .onEnded { gesture in
+                        if gesture.translation.width < -50 {
+                            withAnimation {
+                                selectedTab = min(selectedTab + 1, 1)
+                            }
+                        } else if gesture.translation.width > 50 {
+                            withAnimation {
+                                selectedTab = max(selectedTab - 1, 0)
+                            }
+                        }
+                    }
+            )
         }
-        .padding()
+        .tabViewStyle(.automatic)
+        .animation(.easeInOut(duration: 0.5), value: selectedTab)
     }
 }
 
 #Preview {
     ContentView()
+        .environmentObject(PersonViewModel())
 }
