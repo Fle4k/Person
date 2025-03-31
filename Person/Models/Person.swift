@@ -1,6 +1,6 @@
 import Foundation
 
-enum Gender: String, CaseIterable {
+enum Gender: String, CaseIterable, Codable {
     case male = "male"
     case female = "female"
     case diverse = "diverse"
@@ -14,7 +14,7 @@ enum Gender: String, CaseIterable {
     }
 }
 
-enum Nationality: String, CaseIterable {
+enum Nationality: String, CaseIterable, Codable {
     case german = "german"
     case british = "british"
     
@@ -26,56 +26,45 @@ enum Nationality: String, CaseIterable {
     }
 }
 
-struct Person: Identifiable, Hashable {
+struct PersonDetails: Codable {
+    var height: String = ""
+    var hairColor: String = ""
+    var eyeColor: String = ""
+    var characteristics: String = ""
+    var style: String = ""
+    var type: String = ""
+    var hashtag: String = ""
+    var notes: String = ""
+}
+
+struct Person: Identifiable, Codable, Hashable {
     let id: UUID
     var firstName: String
     var lastName: String
     var gender: Gender
     var nationality: Nationality
-    var decade: String?
+    var decade: String
+    var isFavorite: Bool
     var imageData: Data?
-    var notes: String = ""
-    var tags: Set<String> = []
-    var isFavorite: Bool = false
+    var tags: [String]
     
-    // Optional details
-    var height: String?
-    var hairColor: String?
-    var eyeColor: String?
-    var characteristics: String?
-    var style: String?
-    var type: String?
-    var hashtag: String?
-    
-    init(
-        id: UUID = UUID(),
-        firstName: String,
-        lastName: String,
-        gender: Gender = .female,
-        nationality: Nationality = .german,
-        decade: String? = nil,
-        imageData: Data? = nil,
-        notes: String = "",
-        tags: Set<String> = [],
-        isFavorite: Bool = false
-    ) {
+    init(id: UUID = UUID(), firstName: String, lastName: String, gender: Gender, nationality: Nationality, decade: String, isFavorite: Bool = false, imageData: Data? = nil, tags: [String] = []) {
         self.id = id
         self.firstName = firstName
         self.lastName = lastName
         self.gender = gender
         self.nationality = nationality
         self.decade = decade
-        self.imageData = imageData
-        self.notes = notes
-        self.tags = tags
         self.isFavorite = isFavorite
-    }
-    
-    func hash(into hasher: inout Hasher) {
-        hasher.combine(id)
+        self.imageData = imageData
+        self.tags = tags
     }
     
     static func == (lhs: Person, rhs: Person) -> Bool {
         lhs.id == rhs.id
+    }
+    
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
     }
 } 

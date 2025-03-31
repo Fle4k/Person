@@ -10,11 +10,13 @@ import SwiftUI
 @main
 struct PersonApp: App {
     @StateObject private var viewModel = PersonViewModel()
+    @StateObject private var nameStore = NameStore()
     
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .environmentObject(viewModel)
+                .environmentObject(nameStore)
         }
     }
 }

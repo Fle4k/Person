@@ -3,9 +3,10 @@ import SwiftUI
 struct GeneratedNamesListView: View {
     let names: [Person]
     @Binding var sheetDetent: PresentationDetent
-    @EnvironmentObject private var viewModel: PersonViewModel
+    @EnvironmentObject private var nameStore: NameStore
     @State private var nameToUnfavorite: Person?
     @State private var showingUnfavoriteAlert = false
+    @State private var favoriteStates: [UUID: Bool] = [:]
     
     var body: some View {
         List {
@@ -15,36 +16,21 @@ struct GeneratedNamesListView: View {
                     Button {
                         handleFavoriteAction(for: person)
                     } label: {
-                        Image(systemName: person.isFavorite ? "star.fill" : "star")
+                        Image(systemName: favoriteStates[person.id] ?? person.isFavorite ? "star.fill" : "star")
                             .foregroundStyle(Color.dynamicText)
                             .contentTransition(.symbolEffect(.replace))
                     }
                     .buttonStyle(PlainButtonStyle())
                     .frame(width: 32)
                     
-                    // Name with context menu
+                    // Name
                     Text("\(person.firstName) \(person.lastName)")
                         .foregroundStyle(Color.dynamicText)
                         .padding(.leading, 8)
                         .lineLimit(1)
                         .truncationMode(.tail)
-                        .contextMenu {
-                            Button(action: {
-                                UIPasteboard.general.string = "\(person.firstName) \(person.lastName)"
-                            }) {
-                                Label("Kopieren", systemImage: "doc.on.doc")
-                            }
-                        }
                     
                     Spacer()
-                    
-                    // Navigation chevron
-                    if person.isFavorite {
-                        NavigationLink(destination: PersonDetailView(person: person)) {
-                            EmptyView()
-                        }
-                        .tint(Color.dynamicText)
-                    }
                 }
             }
         }
@@ -60,7 +46,8 @@ struct GeneratedNamesListView: View {
             Button("Abbrechen", role: .cancel) {}
             Button("Entfernen", role: .destructive) {
                 withAnimation {
-                    viewModel.removePerson(person)
+                    favoriteStates[person.id] = false
+                    nameStore.removeFromFavorites(person)
                 }
             }
         } message: { person in
@@ -72,12 +59,15 @@ struct GeneratedNamesListView: View {
         let generator = UISelectionFeedbackGenerator()
         generator.prepare()
         
-        if person.isFavorite {
+        if favoriteStates[person.id] ?? person.isFavorite {
             handleUnfavorite(person)
         } else {
             withAnimation {
                 generator.selectionChanged()
-                viewModel.addPerson(person)
+                var updatedPerson = person
+                updatedPerson.isFavorite = true
+                favoriteStates[person.id] = true
+                nameStore.addToFavorites(updatedPerson)
             }
         }
     }
@@ -88,22 +78,22 @@ struct GeneratedNamesListView: View {
             showingUnfavoriteAlert = true
         } else {
             withAnimation {
-                viewModel.removePerson(person)
+                favoriteStates[person.id] = false
+                nameStore.removeFromFavorites(person)
             }
         }
     }
     
     private func hasAdditionalData(_ person: Person) -> Bool {
-        !person.notes.isEmpty ||
-        !person.tags.isEmpty ||
-        person.imageData != nil ||
-        person.height != nil ||
-        person.hairColor != nil ||
-        person.eyeColor != nil ||
-        person.characteristics != nil ||
-        person.style != nil ||
-        person.type != nil ||
-        person.hashtag != nil
+        let details = nameStore.getDetails(for: person)
+        return !details.height.isEmpty ||
+               !details.hairColor.isEmpty ||
+               !details.eyeColor.isEmpty ||
+               !details.characteristics.isEmpty ||
+               !details.style.isEmpty ||
+               !details.type.isEmpty ||
+               !details.hashtag.isEmpty ||
+               !details.notes.isEmpty
     }
 }
 
@@ -111,11 +101,11 @@ struct GeneratedNamesListView: View {
     NavigationStack {
         GeneratedNamesListView(
             names: [
-                Person(firstName: "Max", lastName: "Mustermann", gender: .male),
-                Person(firstName: "Erika", lastName: "Musterfrau", gender: .female)
+                Person(firstName: "Max", lastName: "Mustermann", gender: .male, nationality: .german, decade: "1990"),
+                Person(firstName: "Erika", lastName: "Musterfrau", gender: .female, nationality: .german, decade: "1990")
             ],
             sheetDetent: .constant(.height(40))
         )
-        .environmentObject(PersonViewModel())
+        .environmentObject(NameStore())
     }
 } 

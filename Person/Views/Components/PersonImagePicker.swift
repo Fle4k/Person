@@ -1,7 +1,7 @@
 import SwiftUI
 import PhotosUI
 
-struct ImagePicker: UIViewControllerRepresentable {
+struct PersonImagePicker: UIViewControllerRepresentable {
     @Binding var image: UIImage?
     @Environment(\.dismiss) private var dismiss
     let onImageSelected: ((UIImage) -> Void)?
@@ -26,9 +26,9 @@ struct ImagePicker: UIViewControllerRepresentable {
     }
     
     class Coordinator: NSObject, PHPickerViewControllerDelegate {
-        let parent: ImagePicker
+        let parent: PersonImagePicker
         
-        init(_ parent: ImagePicker) {
+        init(_ parent: PersonImagePicker) {
             self.parent = parent
         }
         

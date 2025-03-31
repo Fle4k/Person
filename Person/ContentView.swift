@@ -12,6 +12,7 @@ struct ContentView: View {
     @State private var isDrawerPresented = false
     @State private var hasGeneratedNames = false
     @StateObject private var viewModel = PersonViewModel()
+    @StateObject private var nameStore = NameStore()
     
     init() {
         // Customize tab bar appearance
@@ -26,10 +27,11 @@ struct ContentView: View {
         TabView(selection: $selectedTab) {
             NavigationStack {
                 NameGeneratorView(
-                    isDrawerPresented: $isDrawerPresented,
-                    hasGeneratedNames: $hasGeneratedNames,
-                    viewModel: viewModel
+                    viewModel: viewModel,
+                    showingGeneratedNames: $isDrawerPresented,
+                    hasGeneratedNames: $hasGeneratedNames
                 )
+                .environmentObject(nameStore)
             }
             .tint(Color.dynamicText)
             .tabItem {
@@ -54,6 +56,7 @@ struct ContentView: View {
             NavigationStack {
                 FavoritesView()
                     .environmentObject(viewModel)
+                    .environmentObject(nameStore)
             }
             .tint(Color.dynamicText)
             .tabItem {
@@ -83,4 +86,5 @@ struct ContentView: View {
 #Preview {
     ContentView()
         .environmentObject(PersonViewModel())
+        .environmentObject(NameStore())
 }

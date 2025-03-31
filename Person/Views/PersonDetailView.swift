@@ -29,10 +29,9 @@ extension UIImage {
 }
 
 struct PersonDetailView: View {
-    @EnvironmentObject private var viewModel: PersonViewModel
+    @EnvironmentObject private var nameStore: NameStore
     @State private var editedPerson: Person
-    @State private var selectedItem: PhotosPickerItem?
-    @State private var newTag: String = ""
+    @State private var details: PersonDetails
     @State private var menuIconColor: Color = .dynamicText
     @State private var showingImagePicker = false
     @State private var selectedImage: UIImage?
@@ -41,6 +40,7 @@ struct PersonDetailView: View {
     
     init(person: Person) {
         _editedPerson = State(initialValue: person)
+        _details = State(initialValue: PersonDetails())
     }
     
     var body: some View {
@@ -70,41 +70,82 @@ struct PersonDetailView: View {
                 menuButton
             }
         }
+        .toolbarColorScheme(selectedImage?.averageBrightness ?? 0.5 > 0.5 ? .dark : .light, for: .navigationBar)
+        .toolbar(.visible, for: .navigationBar)
         .sheet(isPresented: $showingImagePicker) {
-            ImagePicker(image: $selectedImage) { image in
-                if let imageData = image.jpegData(compressionQuality: 0.8) {
-                    editedPerson.imageData = imageData
-                    viewModel.updatePerson(editedPerson)
+            PersonImagePicker(image: $selectedImage) { image in
+                print("Debug - Image selected, size: \(image.size)")
+                
+                // First ensure the person is in favorites
+                if !editedPerson.isFavorite {
+                    print("Debug - Adding person to favorites before saving image")
+                    nameStore.addToFavorites(editedPerson)
+                }
+                
+                // Save the image
+                nameStore.saveImage(image, for: editedPerson)
+                print("Debug - Image saved to store")
+                
+                // Reload the person from favorites to get the latest data
+                if let updatedPerson = nameStore.favorites.first(where: { $0.id == editedPerson.id }) {
+                    print("Debug - Found updated person in favorites")
+                    print("Debug - Updated person has image: \(updatedPerson.imageData != nil)")
+                    editedPerson = updatedPerson
+                    selectedImage = image
+                } else {
+                    print("Debug - WARNING: Could not find updated person in favorites")
+                }
+                
+                updateMenuIconColor(for: image)
+            }
+        }
+        .onAppear {
+            print("Debug - PersonDetailView appeared")
+            print("Debug - Current person ID: \(editedPerson.id)")
+            print("Debug - Current person has image: \(editedPerson.imageData != nil)")
+            print("Debug - Current person is favorite: \(editedPerson.isFavorite)")
+            
+            // Load the latest person data from favorites
+            if let updatedPerson = nameStore.favorites.first(where: { $0.id == editedPerson.id }) {
+                print("Debug - Found updated person in favorites")
+                print("Debug - Updated person has image: \(updatedPerson.imageData != nil)")
+                editedPerson = updatedPerson
+                
+                // Load and update image
+                if let image = nameStore.loadImage(for: updatedPerson) {
+                    print("Debug - Successfully loaded image from store")
+                    selectedImage = image
                     updateMenuIconColor(for: image)
+                } else {
+                    print("Debug - No image found in store")
+                }
+            } else {
+                print("Debug - Person not found in favorites")
+                // If person is not in favorites but marked as favorite, add them
+                if editedPerson.isFavorite {
+                    print("Debug - Adding person to favorites")
+                    nameStore.addToFavorites(editedPerson)
                 }
             }
+            
+            // Load details for this person
+            details = nameStore.getDetails(for: editedPerson)
         }
-        .onChange(of: selectedItem) { oldItem, newItem in
-            Task {
-                if let data = try? await newItem?.loadTransferable(type: Data.self) {
-                    editedPerson.imageData = data
-                    viewModel.updatePerson(editedPerson)
-                }
-            }
-        }
-        .onChange(of: editedPerson) { oldPerson, newPerson in
-            viewModel.updatePerson(editedPerson)
+        .onDisappear {
+            // Save details when leaving the view
+            nameStore.saveDetails(details, for: editedPerson)
         }
     }
     
     private var imageSection: some View {
         GeometryReader { geo in
-            if let imageData = editedPerson.imageData,
-               let uiImage = UIImage(data: imageData) {
-                Image(uiImage: uiImage)
+            if let image = selectedImage {
+                Image(uiImage: image)
                     .resizable()
                     .scaledToFill()
                     .frame(width: geo.size.width)
                     .frame(height: 300)
                     .clipped()
-                    .onChange(of: uiImage) { _, newImage in
-                        updateMenuIconColor(for: newImage)
-                    }
             } else {
                 Rectangle()
                     .fill(.clear)
@@ -117,44 +158,14 @@ struct PersonDetailView: View {
     
     private var detailsSection: some View {
         VStack(spacing: 0) {
-            DetailRow(title: "Größe:", text: Binding(
-                get: { editedPerson.height ?? "" },
-                set: { editedPerson.height = $0 }
-            ))
-            DetailRow(title: "Haarfarbe:", text: Binding(
-                get: { editedPerson.hairColor ?? "" },
-                set: { editedPerson.hairColor = $0 }
-            ))
-            DetailRow(title: "Augenfarbe:", text: Binding(
-                get: { editedPerson.eyeColor ?? "" },
-                set: { editedPerson.eyeColor = $0 }
-            ))
-            DetailRow(title: "Merkmale:", text: Binding(
-                get: { editedPerson.characteristics ?? "" },
-                set: { editedPerson.characteristics = $0 }
-            ))
-            DetailRow(title: "Style:", text: Binding(
-                get: { editedPerson.style ?? "" },
-                set: { editedPerson.style = $0 }
-            ))
-            DetailRow(title: "Typ:", text: Binding(
-                get: { editedPerson.type ?? "" },
-                set: { editedPerson.type = $0 }
-            ))
-            DetailRow(title: "# :", 
-                     text: $newTag,
-                     placeholder: "z.B. Projektname",
-                     isTagInput: true,
-                     tags: editedPerson.tags,
-                     onTagAdd: { tag in
-                         editedPerson.tags.insert(tag)
-                         viewModel.updatePerson(editedPerson)
-                     },
-                     onTagRemove: { tag in
-                         editedPerson.tags.remove(tag)
-                         viewModel.updatePerson(editedPerson)
-                     })
-            DetailRow(title: "Notizen:", text: $editedPerson.notes, isMultiline: true, isLast: true)
+            DetailRow(title: "Größe:", text: $details.height)
+            DetailRow(title: "Haarfarbe:", text: $details.hairColor)
+            DetailRow(title: "Augenfarbe:", text: $details.eyeColor)
+            DetailRow(title: "Merkmale:", text: $details.characteristics)
+            DetailRow(title: "Style:", text: $details.style)
+            DetailRow(title: "Typ:", text: $details.type)
+            DetailRow(title: "# :", text: $details.hashtag, placeholder: "z.B. Projektname")
+            DetailRow(title: "Notizen:", text: $details.notes, isMultiline: true, isLast: true)
         }
         .padding()
     }
@@ -162,15 +173,18 @@ struct PersonDetailView: View {
     private var menuButton: some View {
         Menu {
             Button {
-                showImagePicker()
+                showingImagePicker = true
             } label: {
                 Label("Foto hinzufügen", systemImage: "photo")
             }
             
-            if editedPerson.imageData != nil {
+            if selectedImage != nil {
                 Button(role: .destructive) {
-                    editedPerson.imageData = nil
-                    viewModel.updatePerson(editedPerson)
+                    withAnimation {
+                        selectedImage = nil
+                        nameStore.deleteImage(for: editedPerson)
+                        menuIconColor = .dynamicText
+                    }
                 } label: {
                     Label("Foto löschen", systemImage: "trash")
                 }
@@ -179,7 +193,7 @@ struct PersonDetailView: View {
             if editedPerson.isFavorite {
                 Button(role: .destructive) {
                     editedPerson.isFavorite = false
-                    viewModel.updatePerson(editedPerson)
+                    nameStore.updatePerson(editedPerson)
                     dismiss()
                 } label: {
                     Label("Von Favoriten entfernen", systemImage: "star.slash")
@@ -189,10 +203,6 @@ struct PersonDetailView: View {
             Image(systemName: "ellipsis")
                 .foregroundStyle(menuIconColor)
         }
-    }
-    
-    private func showImagePicker() {
-        showingImagePicker = true
     }
     
     private func updateMenuIconColor(for image: UIImage) {
@@ -207,10 +217,8 @@ struct DetailRow: View {
     var placeholder: String = ""
     var isMultiline: Bool = false
     var isLast: Bool = false
-    var isTagInput: Bool = false
-    var tags: Set<String>? = nil
-    var onTagAdd: ((String) -> Void)? = nil
-    var onTagRemove: ((String) -> Void)? = nil
+    @Environment(\.colorScheme) var colorScheme
+    @State private var inputText: String = ""
     
     var body: some View {
         VStack(spacing: 0) {
@@ -218,42 +226,9 @@ struct DetailRow: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(title)
                         .font(.body)
-                    TextEditor(text: text)
+                    TextEditor(text: $inputText)
                         .frame(minHeight: 100)
                         .foregroundStyle(Color.dynamicText.opacity(0.6))
-                }
-                .padding(.horizontal)
-                .padding(.vertical, 12)
-            } else if isTagInput {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Text(title)
-                            .font(.body)
-                        Spacer()
-                        TextField(placeholder, text: text)
-                            .multilineTextAlignment(.trailing)
-                            .foregroundStyle(Color.dynamicText.opacity(0.6))
-                            .submitLabel(.done)
-                            .onSubmit {
-                                if let onTagAdd = onTagAdd {
-                                    let tag = text.wrappedValue.trimmingCharacters(in: .whitespacesAndNewlines)
-                                    if !tag.isEmpty {
-                                        onTagAdd(tag)
-                                        text.wrappedValue = ""
-                                    }
-                                }
-                            }
-                    }
-                    
-                    if let tags = tags, !tags.isEmpty {
-                        FlowLayout(spacing: 8) {
-                            ForEach(Array(tags), id: \.self) { tag in
-                                TagView(tag: tag) {
-                                    onTagRemove?(tag)
-                                }
-                            }
-                        }
-                    }
                 }
                 .padding(.horizontal)
                 .padding(.vertical, 12)
@@ -262,7 +237,7 @@ struct DetailRow: View {
                     Text(title)
                         .font(.body)
                     Spacer()
-                    TextField(placeholder, text: text)
+                    TextField(placeholder, text: $inputText)
                         .multilineTextAlignment(.trailing)
                         .foregroundStyle(Color.dynamicText.opacity(0.6))
                         .submitLabel(.done)
@@ -277,6 +252,50 @@ struct DetailRow: View {
                     .padding(.leading)
             }
         }
+        .onAppear {
+            inputText = text.wrappedValue
+        }
+        .onChange(of: inputText) { _, newValue in
+            text.wrappedValue = newValue
+        }
+    }
+}
+
+extension View {
+    func placeholder(_ shouldShow: Bool, _ text: String) -> some View {
+        overlay(
+            Text(text)
+                .foregroundStyle(Color.dynamicText.opacity(0.6))
+                .multilineTextAlignment(.trailing)
+                .allowsHitTesting(false)
+                .opacity(shouldShow ? 1 : 0)
+                .frame(maxWidth: .infinity, alignment: .trailing)
+        )
+    }
+}
+
+struct TagView: View {
+    let tag: String
+    let onRemove: () -> Void
+    @Environment(\.colorScheme) var colorScheme
+    
+    var body: some View {
+        HStack(spacing: 4) {
+            Text(tag)
+                .font(.subheadline)
+            
+            Button(action: onRemove) {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.caption)
+            }
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(colorScheme == .dark ? Color.white : Color.black)
+        )
+        .foregroundStyle(colorScheme == .dark ? Color.black : Color.white)
     }
 }
 
@@ -354,8 +373,14 @@ struct FlowLayout: Layout {
 }
 
 #Preview {
-    NavigationView {
-        PersonDetailView(person: Person(firstName: "Max", lastName: "Mustermann"))
-            .environmentObject(PersonViewModel())
+    NavigationStack {
+        PersonDetailView(person: Person(
+            firstName: "Max",
+            lastName: "Mustermann",
+            gender: .male,
+            nationality: .german,
+            decade: "1990"
+        ))
+        .environmentObject(NameStore())
     }
 } 
