@@ -13,7 +13,7 @@ struct NameGeneratorView: View {
     @Binding var hasGeneratedNames: Bool
     @Environment(\.colorScheme) var colorScheme
     
-    private let decades = ["Alle", "1940", "1950", "1960", "1970", "1980", "1990", "2000", "2010"]
+    private let decades = ["Alle", "1940", "1950", "1960", "1970", "1980", "1990", "2000"]
     
     var toggleTint: Color {
         colorScheme == .dark ? Color.dynamicText.opacity(0.6) : Color.dynamicFill

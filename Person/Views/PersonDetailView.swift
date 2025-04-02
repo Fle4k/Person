@@ -28,6 +28,11 @@ extension UIImage {
     }
 }
 
+enum Field {
+    case merkmale
+    case notizen
+}
+
 struct PersonDetailView: View {
     @EnvironmentObject private var nameStore: NameStore
     @State private var editedPerson: Person
@@ -37,6 +42,7 @@ struct PersonDetailView: View {
     @State private var selectedImage: UIImage?
     @Environment(\.colorScheme) var colorScheme
     @Environment(\.dismiss) private var dismiss
+    @FocusState private var focusedField: Field?
     
     init(person: Person) {
         _editedPerson = State(initialValue: person)
@@ -46,17 +52,14 @@ struct PersonDetailView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {
-                // Image Section
                 imageSection
                 
-                // Name Section
                 Text("\(editedPerson.firstName) \(editedPerson.lastName)")
                     .font(.title2)
                     .bold()
                     .foregroundStyle(Color.dynamicText)
                     .padding(.top, -10)
                 
-                // Details Section with Notizen
                 detailsSection
             }
             .padding(.top, 0)
@@ -67,10 +70,15 @@ struct PersonDetailView: View {
         .toolbarBackground(.clear, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
-                menuButton
+                if focusedField != nil {
+                    Button("Done") {
+                        focusedField = nil
+                    }
+                } else {
+                    menuButton
+                }
             }
         }
-        .toolbarColorScheme(selectedImage?.averageBrightness ?? 0.5 > 0.5 ? .dark : .light, for: .navigationBar)
         .toolbar(.visible, for: .navigationBar)
         .sheet(isPresented: $showingImagePicker) {
             PersonImagePicker(image: $selectedImage) { image in
@@ -158,14 +166,32 @@ struct PersonDetailView: View {
     
     private var detailsSection: some View {
         VStack(spacing: 0) {
-            DetailRow(title: "Größe:", text: $details.height)
-            DetailRow(title: "Haarfarbe:", text: $details.hairColor)
-            DetailRow(title: "Augenfarbe:", text: $details.eyeColor)
-            DetailRow(title: "Merkmale:", text: $details.characteristics)
-            DetailRow(title: "Style:", text: $details.style)
-            DetailRow(title: "Typ:", text: $details.type)
-            DetailRow(title: "# :", text: $details.hashtag, placeholder: "z.B. Projektname")
-            DetailRow(title: "Notizen:", text: $details.notes, isMultiline: true, isLast: true)
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Merkmale:")
+                    .font(.body)
+                
+                TextEditor(text: $details.characteristics)
+                    .frame(minHeight: 40)
+                    .foregroundStyle(Color.dynamicText.opacity(0.6))
+                    .focused($focusedField, equals: .merkmale)
+            }
+            .padding(.horizontal)
+            .padding(.vertical, 12)
+            
+            Divider()
+                .background(Color.dynamicText.opacity(0.2))
+                .padding(.leading)
+            
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Notizen:")
+                    .font(.body)
+                TextEditor(text: $details.notes)
+                    .frame(minHeight: 40)
+                    .foregroundStyle(Color.dynamicText.opacity(0.6))
+                    .focused($focusedField, equals: .notizen)
+            }
+            .padding(.horizontal)
+            .padding(.vertical, 12)
         }
         .padding()
     }
@@ -189,16 +215,6 @@ struct PersonDetailView: View {
                     Label("Foto löschen", systemImage: "trash")
                 }
             }
-            
-            if editedPerson.isFavorite {
-                Button(role: .destructive) {
-                    editedPerson.isFavorite = false
-                    nameStore.updatePerson(editedPerson)
-                    dismiss()
-                } label: {
-                    Label("Von Favoriten entfernen", systemImage: "star.slash")
-                }
-            }
         } label: {
             Image(systemName: "ellipsis")
                 .foregroundStyle(menuIconColor)
@@ -219,6 +235,41 @@ struct DetailRow: View {
     var isLast: Bool = false
     @Environment(\.colorScheme) var colorScheme
     @State private var inputText: String = ""
+    @FocusState private var isFocused: Bool
+    @Binding var parentFocused: Bool
+    
+    private var formattedText: Binding<String> {
+        Binding(
+            get: {
+                if title == "Merkmale:" {
+                    if inputText.isEmpty {
+                        return "• "
+                    }
+                    let lines = inputText.components(separatedBy: .newlines)
+                    return lines.map { line in
+                        if line.trimmingCharacters(in: .whitespaces).isEmpty {
+                            return "• "
+                        }
+                        return line.starts(with: "• ") ? line : "• " + line
+                    }.joined(separator: "\n")
+                }
+                return inputText
+            },
+            set: { newValue in
+                if title == "Merkmale:" {
+                    let lines = newValue.components(separatedBy: .newlines)
+                    inputText = lines.map { line in
+                        if line.trimmingCharacters(in: .whitespaces).isEmpty {
+                            return "• "
+                        }
+                        return line.starts(with: "• ") ? line : "• " + line
+                    }.joined(separator: "\n")
+                } else {
+                    inputText = newValue
+                }
+            }
+        )
+    }
     
     var body: some View {
         VStack(spacing: 0) {
@@ -226,9 +277,14 @@ struct DetailRow: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(title)
                         .font(.body)
-                    TextEditor(text: $inputText)
-                        .frame(minHeight: 100)
+                    TextEditor(text: formattedText)
+                        .frame(minHeight: 40)
                         .foregroundStyle(Color.dynamicText.opacity(0.6))
+                        .focused($isFocused)
+                }
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    isFocused = true
                 }
                 .padding(.horizontal)
                 .padding(.vertical, 12)
@@ -241,6 +297,7 @@ struct DetailRow: View {
                         .multilineTextAlignment(.trailing)
                         .foregroundStyle(Color.dynamicText.opacity(0.6))
                         .submitLabel(.done)
+                        .focused($isFocused)
                 }
                 .padding(.horizontal)
                 .padding(.vertical, 12)
@@ -257,6 +314,9 @@ struct DetailRow: View {
         }
         .onChange(of: inputText) { _, newValue in
             text.wrappedValue = newValue
+        }
+        .onChange(of: isFocused) { _, newValue in
+            parentFocused = newValue
         }
     }
 }

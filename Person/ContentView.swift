@@ -11,16 +11,31 @@ struct ContentView: View {
     @State private var selectedTab = 0
     @State private var isDrawerPresented = false
     @State private var hasGeneratedNames = false
+    @State private var favoritesRefreshID = UUID()
     @StateObject private var viewModel = PersonViewModel()
     @StateObject private var nameStore = NameStore()
     
     init() {
         // Customize tab bar appearance
-        let appearance = UITabBarAppearance()
-        appearance.stackedLayoutAppearance.selected.iconColor = UIColor(Color.dynamicText)
-        appearance.stackedLayoutAppearance.selected.titleTextAttributes = [.foregroundColor: UIColor(Color.dynamicText)]
-        UITabBar.appearance().standardAppearance = appearance
-        UITabBar.appearance().scrollEdgeAppearance = appearance
+        let tabAppearance = UITabBarAppearance()
+        tabAppearance.stackedLayoutAppearance.selected.iconColor = UIColor(Color.dynamicText)
+        tabAppearance.stackedLayoutAppearance.selected.titleTextAttributes = [.foregroundColor: UIColor(Color.dynamicText)]
+        UITabBar.appearance().standardAppearance = tabAppearance
+        UITabBar.appearance().scrollEdgeAppearance = tabAppearance
+        
+        // Remove navigation bar divider
+        let navigationBarAppearance = UINavigationBarAppearance()
+        navigationBarAppearance.configureWithOpaqueBackground()
+        navigationBarAppearance.shadowColor = .clear
+        navigationBarAppearance.backgroundColor = .systemBackground
+        UINavigationBar.appearance().standardAppearance = navigationBarAppearance
+        UINavigationBar.appearance().scrollEdgeAppearance = navigationBarAppearance
+        
+        // Set tint color for all UI elements including alerts
+        UIView.appearance().tintColor = UIColor(Color.dynamicText)
+        
+        // Set alert button appearance specifically
+        UIView.appearance(whenContainedInInstancesOf: [UIAlertController.self]).tintColor = UIColor(Color.dynamicText)
     }
     
     var body: some View {
@@ -33,7 +48,6 @@ struct ContentView: View {
                 )
                 .environmentObject(nameStore)
             }
-            .tint(Color.dynamicText)
             .tabItem {
                 Label("Neuer Name", systemImage: "person")
             }
@@ -57,8 +71,11 @@ struct ContentView: View {
                 FavoritesView()
                     .environmentObject(viewModel)
                     .environmentObject(nameStore)
+                    .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("RefreshFavorites"))) { _ in
+                        // Force reload of NameStore favorites
+                        nameStore.loadFavorites()
+                    }
             }
-            .tint(Color.dynamicText)
             .tabItem {
                 Label("Favoriten", systemImage: "star.fill")
             }
@@ -78,8 +95,15 @@ struct ContentView: View {
                     }
             )
         }
+        .onChange(of: selectedTab) { oldTab, newTab in
+            if newTab == 1 {
+                favoritesRefreshID = UUID()
+                NotificationCenter.default.post(name: NSNotification.Name("RefreshFavorites"), object: nil)
+            }
+        }
         .tabViewStyle(.automatic)
         .animation(.easeInOut(duration: 0.5), value: selectedTab)
+        .tint(Color.dynamicText)
     }
 }
 

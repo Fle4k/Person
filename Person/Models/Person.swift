@@ -47,8 +47,9 @@ struct Person: Identifiable, Codable, Hashable {
     var isFavorite: Bool
     var imageData: Data?
     var tags: [String]
+    var favoritedAt: Date?
     
-    init(id: UUID = UUID(), firstName: String, lastName: String, gender: Gender, nationality: Nationality, decade: String, isFavorite: Bool = false, imageData: Data? = nil, tags: [String] = []) {
+    init(id: UUID = UUID(), firstName: String, lastName: String, gender: Gender, nationality: Nationality, decade: String, isFavorite: Bool = false, imageData: Data? = nil, tags: [String] = [], favoritedAt: Date? = nil) {
         self.id = id
         self.firstName = firstName
         self.lastName = lastName
@@ -58,6 +59,7 @@ struct Person: Identifiable, Codable, Hashable {
         self.isFavorite = isFavorite
         self.imageData = imageData
         self.tags = tags
+        self.favoritedAt = favoritedAt
     }
     
     static func == (lhs: Person, rhs: Person) -> Bool {
@@ -66,5 +68,9 @@ struct Person: Identifiable, Codable, Hashable {
     
     func hash(into hasher: inout Hasher) {
         hasher.combine(id)
+    }
+    
+    func debugDescription() -> String {
+        return "Person(id: \(id), name: \(firstName) \(lastName), favorite: \(isFavorite))"
     }
 } 
