@@ -30,11 +30,15 @@ struct PersonDetails: Codable {
     var height: String = ""
     var hairColor: String = ""
     var eyeColor: String = ""
-    var characteristics: String = ""
     var style: String = ""
     var type: String = ""
     var hashtag: String = ""
+    var characteristics: String = ""
     var notes: String = ""
+    var age: String = ""
+    var clothingStyle: String = ""
+    var wants: String = ""
+    var needs: String = ""
 }
 
 struct Person: Identifiable, Codable, Hashable {

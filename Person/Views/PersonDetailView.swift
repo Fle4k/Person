@@ -33,6 +33,61 @@ enum Field {
     case notizen
 }
 
+class PersonDetailsItemSource: NSObject, UIActivityItemSource {
+    let details: String
+    let fileName: String
+    var fileURL: URL
+    
+    init(details: String, firstName: String, lastName: String) {
+        self.details = details
+        self.fileName = "Person_\(firstName)_\(lastName).txt"
+        
+        // Create temporary file
+        let tempDir = FileManager.default.temporaryDirectory
+        let initialURL = tempDir.appendingPathComponent(self.fileName)
+        
+        // Write content to file
+        do {
+            try details.write(to: initialURL, atomically: true, encoding: .utf8)
+            self.fileURL = initialURL
+        } catch {
+            print("Error writing temporary file: \(error)")
+            // Create a new file with a unique name if the first attempt fails
+            let uniqueFileName = "\(self.fileName)_\(UUID().uuidString)"
+            let fallbackURL = tempDir.appendingPathComponent(uniqueFileName)
+            try? details.write(to: fallbackURL, atomically: true, encoding: .utf8)
+            self.fileURL = fallbackURL
+        }
+    }
+    
+    func activityViewControllerPlaceholderItem(_ activityViewController: UIActivityViewController) -> Any {
+        return fileURL
+    }
+    
+    func activityViewController(_ activityViewController: UIActivityViewController, itemForActivityType activityType: UIActivity.ActivityType?) -> Any? {
+        return fileURL
+    }
+    
+    func activityViewController(_ activityViewController: UIActivityViewController, subjectForActivityType activityType: UIActivity.ActivityType?) -> String {
+        return fileName
+    }
+    
+    func activityViewController(_ activityViewController: UIActivityViewController, dataTypeIdentifierForActivityType activityType: UIActivity.ActivityType?) -> String {
+        return "public.plain-text"
+    }
+    
+    deinit {
+        // Clean up temporary file
+        do {
+            if FileManager.default.fileExists(atPath: fileURL.path) {
+                try FileManager.default.removeItem(at: fileURL)
+            }
+        } catch {
+            print("Error removing temporary file: \(error)")
+        }
+    }
+}
+
 struct PersonDetailView: View {
     @EnvironmentObject private var nameStore: NameStore
     @State private var editedPerson: Person
@@ -40,13 +95,59 @@ struct PersonDetailView: View {
     @State private var menuIconColor: Color = .dynamicText
     @State private var showingImagePicker = false
     @State private var selectedImage: UIImage?
+    @State private var showingShareSheet = false
     @Environment(\.colorScheme) var colorScheme
     @Environment(\.dismiss) private var dismiss
     @FocusState private var focusedField: Field?
+    @State private var shareItem: PersonDetailsItemSource?
     
     init(person: Person) {
         _editedPerson = State(initialValue: person)
         _details = State(initialValue: PersonDetails())
+    }
+    
+    private var formattedDetails: String {
+        var result = ""
+        
+        // 1. Name
+        result += "\(editedPerson.firstName) \(editedPerson.lastName)\n"
+        
+        // 2. Double spacer
+        result += "\n\n"
+        
+        // 3. Alter
+        result += "Alter:\n"
+        result += "\(details.age)\n\n"
+        
+        // 4. Merkmale
+        result += "Merkmale:\n"
+        result += "\(details.characteristics)\n\n"
+        
+        // 5. Style
+        result += "Style:\n"
+        result += "\(details.clothingStyle)\n\n"
+        
+        // 6. Want
+        result += "Want:\n"
+        result += "\(details.wants)\n\n"
+        
+        // 7. Need
+        result += "Need:\n"
+        result += "\(details.needs)\n\n"
+        
+        // 8. Notizen
+        result += "Notizen:\n"
+        result += "\(details.notes)\n"
+        
+        return result
+    }
+    
+    private var shareItemSource: PersonDetailsItemSource {
+        PersonDetailsItemSource(
+            details: formattedDetails,
+            firstName: editedPerson.firstName,
+            lastName: editedPerson.lastName
+        )
     }
     
     var body: some View {
@@ -107,6 +208,16 @@ struct PersonDetailView: View {
                 updateMenuIconColor(for: image)
             }
         }
+        .sheet(isPresented: $showingShareSheet) {
+            if let item = shareItem {
+                ShareSheet(activityItems: [item]) { activityType, completed, _, error in
+                    if completed {
+                        // Clean up after successful share
+                        shareItem = nil
+                    }
+                }
+            }
+        }
         .onAppear {
             print("Debug - PersonDetailView appeared")
             print("Debug - Current person ID: \(editedPerson.id)")
@@ -139,6 +250,11 @@ struct PersonDetailView: View {
             // Load details for this person
             details = nameStore.getDetails(for: editedPerson)
         }
+        .onChange(of: showingShareSheet) { _, newValue in
+            if newValue {
+                shareItem = shareItemSource
+            }
+        }
         .onDisappear {
             // Save details when leaving the view
             nameStore.saveDetails(details, for: editedPerson)
@@ -167,11 +283,25 @@ struct PersonDetailView: View {
     private var detailsSection: some View {
         VStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 8) {
-                Text("Merkmale:")
+                Text("Alter")
                     .font(.body)
-                
+                    .bold()
+                TextField("", text: $details.age)
+                    .foregroundStyle(Color.dynamicText.opacity(0.6))
+            }
+            .padding(.horizontal)
+            .padding(.vertical, 12)
+            
+            Divider()
+                .background(Color.dynamicText.opacity(0.2))
+                .padding(.leading)
+            
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Merkmale")
+                    .font(.body)
+                    .bold()
                 TextEditor(text: $details.characteristics)
-                    .frame(minHeight: 40)
+                    .frame(minHeight: 20)
                     .foregroundStyle(Color.dynamicText.opacity(0.6))
                     .focused($focusedField, equals: .merkmale)
             }
@@ -183,10 +313,56 @@ struct PersonDetailView: View {
                 .padding(.leading)
             
             VStack(alignment: .leading, spacing: 8) {
-                Text("Notizen:")
+                Text("Style")
                     .font(.body)
+                    .bold()
+                TextEditor(text: $details.clothingStyle)
+                    .frame(minHeight: 20)
+                    .foregroundStyle(Color.dynamicText.opacity(0.6))
+            }
+            .padding(.horizontal)
+            .padding(.vertical, 12)
+            
+            Divider()
+                .background(Color.dynamicText.opacity(0.2))
+                .padding(.leading)
+            
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Want")
+                    .font(.body)
+                    .bold()
+                TextEditor(text: $details.wants)
+                    .frame(minHeight: 20)
+                    .foregroundStyle(Color.dynamicText.opacity(0.6))
+            }
+            .padding(.horizontal)
+            .padding(.vertical, 12)
+            
+            Divider()
+                .background(Color.dynamicText.opacity(0.2))
+                .padding(.leading)
+            
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Need")
+                    .font(.body)
+                    .bold()
+                TextEditor(text: $details.needs)
+                    .frame(minHeight: 20)
+                    .foregroundStyle(Color.dynamicText.opacity(0.6))
+            }
+            .padding(.horizontal)
+            .padding(.vertical, 12)
+            
+            Divider()
+                .background(Color.dynamicText.opacity(0.2))
+                .padding(.leading)
+            
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Notizen")
+                    .font(.body)
+                    .bold()
                 TextEditor(text: $details.notes)
-                    .frame(minHeight: 40)
+                    .frame(minHeight: 20)
                     .foregroundStyle(Color.dynamicText.opacity(0.6))
                     .focused($focusedField, equals: .notizen)
             }
@@ -214,6 +390,12 @@ struct PersonDetailView: View {
                 } label: {
                     Label("Foto löschen", systemImage: "trash")
                 }
+            }
+            
+            Button {
+                showingShareSheet = true
+            } label: {
+                Label("Teilen", systemImage: "square.and.arrow.up")
             }
         } label: {
             Image(systemName: "ellipsis")
@@ -278,7 +460,7 @@ struct DetailRow: View {
                     Text(title)
                         .font(.body)
                     TextEditor(text: formattedText)
-                        .frame(minHeight: 40)
+                        .frame(minHeight: 20)
                         .foregroundStyle(Color.dynamicText.opacity(0.6))
                         .focused($isFocused)
                 }
@@ -430,6 +612,22 @@ struct FlowLayout: Layout {
         
         return rows
     }
+}
+
+struct ShareSheet: UIViewControllerRepresentable {
+    let activityItems: [Any]
+    let onCompletion: (UIActivity.ActivityType?, Bool, [Any]?, Error?) -> Void
+    
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        let controller = UIActivityViewController(
+            activityItems: activityItems,
+            applicationActivities: nil
+        )
+        controller.completionWithItemsHandler = onCompletion
+        return controller
+    }
+    
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
 
 #Preview {

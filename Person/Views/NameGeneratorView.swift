@@ -101,7 +101,7 @@ struct NameGeneratorView: View {
                     
                     // Generate Button
                     Button(action: generateAndShowNames) {
-                        Text("Namen Generieren")
+                        Text("Namen generieren")
                             .font(.title3)
                             .bold()
                             .frame(maxWidth: .infinity)
