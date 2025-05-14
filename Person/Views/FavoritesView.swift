@@ -18,6 +18,18 @@ struct FavoritesView: View {
     var body: some View {
         NavigationStack {
             List {
+                // Permanent Shahin Shokoui entry
+                Section {
+                    NavigationLink(destination: SettingsView()) {
+                        HStack {
+                            Image(systemName: "star.fill")
+                                .foregroundStyle(Color.dynamicText)
+                            Text("Shahin Shokoui")
+                                .font(.body)
+                        }
+                    }
+                }
+                // User favorites
                 ForEach(sortedFavorites) { person in
                     NavigationLink {
                         PersonDetailView(person: person)

@@ -35,7 +35,6 @@ struct PersonDetails: Codable {
     var hashtag: String = ""
     var characteristics: String = ""
     var notes: String = ""
-    var age: String = ""
     var clothingStyle: String = ""
     var wants: String = ""
     var needs: String = ""

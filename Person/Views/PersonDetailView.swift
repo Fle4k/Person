@@ -115,27 +115,23 @@ struct PersonDetailView: View {
         // 2. Double spacer
         result += "\n\n"
         
-        // 3. Alter
-        result += "Alter:\n"
-        result += "\(details.age)\n\n"
-        
-        // 4. Merkmale
+        // 3. Merkmale
         result += "Merkmale:\n"
         result += "\(details.characteristics)\n\n"
         
-        // 5. Style
+        // 4. Style
         result += "Style:\n"
         result += "\(details.clothingStyle)\n\n"
         
-        // 6. Want
+        // 5. Want
         result += "Want:\n"
         result += "\(details.wants)\n\n"
         
-        // 7. Need
+        // 6. Need
         result += "Need:\n"
         result += "\(details.needs)\n\n"
         
-        // 8. Notizen
+        // 7. Notizen
         result += "Notizen:\n"
         result += "\(details.notes)\n"
         
@@ -282,20 +278,6 @@ struct PersonDetailView: View {
     
     private var detailsSection: some View {
         VStack(spacing: 0) {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Alter")
-                    .font(.body)
-                    .bold()
-                TextField("", text: $details.age)
-                    .foregroundStyle(Color.dynamicText.opacity(0.6))
-            }
-            .padding(.horizontal)
-            .padding(.vertical, 12)
-            
-            Divider()
-                .background(Color.dynamicText.opacity(0.2))
-                .padding(.leading)
-            
             VStack(alignment: .leading, spacing: 8) {
                 Text("Merkmale")
                     .font(.body)

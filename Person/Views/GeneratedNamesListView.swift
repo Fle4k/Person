@@ -11,27 +11,29 @@ struct GeneratedNamesListView: View {
     var body: some View {
         List {
             ForEach(names) { person in
-                HStack(spacing: 0) {
-                    // Leading star button
-                    Button {
-                        handleFavoriteAction(for: person)
-                    } label: {
+                Button {
+                    handleFavoriteAction(for: person)
+                } label: {
+                    HStack(spacing: 0) {
+                        // Leading star button
                         Image(systemName: favoriteStates[person.id] ?? person.isFavorite ? "star.fill" : "star")
                             .foregroundStyle(Color.dynamicText)
                             .contentTransition(.symbolEffect(.replace))
+                            .frame(width: 32)
+                        
+                        // Name
+                        Text("\(person.firstName) \(person.lastName)")
+                            .foregroundStyle(Color.dynamicText)
+                            .padding(.leading, 8)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                        
+                        Spacer()
                     }
-                    .buttonStyle(PlainButtonStyle())
-                    .frame(width: 32)
-                    
-                    // Name
-                    Text("\(person.firstName) \(person.lastName)")
-                        .foregroundStyle(Color.dynamicText)
-                        .padding(.leading, 8)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                    
-                    Spacer()
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
                 }
+                .buttonStyle(PlainButtonStyle())
             }
         }
         .listStyle(.plain)
