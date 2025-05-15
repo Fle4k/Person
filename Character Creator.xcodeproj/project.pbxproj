@@ -24,7 +24,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		DB13D2252D936BB600F8EDCE /* Person.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Person.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		DB13D2252D936BB600F8EDCE /* Character Creator.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Character Creator.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		DB13D2352D936BB700F8EDCE /* PersonTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PersonTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		DB13D23F2D936BB700F8EDCE /* PersonUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PersonUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -99,7 +99,7 @@
 		DB13D2262D936BB600F8EDCE /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				DB13D2252D936BB600F8EDCE /* Person.app */,
+				DB13D2252D936BB600F8EDCE /* Character Creator.app */,
 				DB13D2352D936BB700F8EDCE /* PersonTests.xctest */,
 				DB13D23F2D936BB700F8EDCE /* PersonUITests.xctest */,
 			);
@@ -128,7 +128,7 @@
 			packageProductDependencies = (
 			);
 			productName = Person;
-			productReference = DB13D2252D936BB600F8EDCE /* Person.app */;
+			productReference = DB13D2252D936BB600F8EDCE /* Character Creator.app */;
 			productType = "com.apple.product-type.application";
 		};
 		DB13D2342D936BB700F8EDCE /* PersonTests */ = {
@@ -424,7 +424,7 @@
 				);
 				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = de.metame.Person;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_NAME = "Character Creator";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -453,7 +453,7 @@
 				);
 				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = de.metame.Person;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_NAME = "Character Creator";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
